@@ -116,7 +116,7 @@ void SVGProgram::saveas()
     }
 
     std::cin >> fileLocation;
-    
+
     currentFile.close();
     currentFile.open(fileLocation, std::ios::out | std::ios::trunc);
 
@@ -141,31 +141,19 @@ void SVGProgram::close()
     exit(0);
 }
 
+void SVGProgram::help()
+{
+    std::cout << "Helping\n";
+    exit(0);
+}
+
 void SVGProgram::run(std::string command)
 {
-    if (command.compare("open") == 0)
+    auto commandFunction = commandTable.find(command);
+    if (commandFunction != commandTable.end())
     {
-        open();
-    }
-    else if (command.compare("print") == 0)
-    {
-        print();
-    }
-    else if (command.compare("save") == 0)
-    {
-        save();
-    }
-    else if (command.compare("saveas") == 0)
-    {
-        saveas();
-    }
-    else if (command.compare("close") == 0)
-    {
-        close();
-    }
-    else
-    {
-        std::cout << "Unrecognized command.\n";
+        CommandFunctionPointer cfp = commandFunction->second;
+        (this->*cfp)();
     }
 }
 

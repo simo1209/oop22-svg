@@ -9,14 +9,22 @@
 
 const std::map<std::string, bool> supportedTags = {
     {"rect", true},
-    {"circle", true}
-};
+    {"circle", true}};
 
 class SVGProgram
 {
 private:
-
     unsigned supportedIdSequence = 1;
+
+    typedef void (SVGProgram::*CommandFunctionPointer)();
+    const std::map<std::string, CommandFunctionPointer> commandTable = {
+        {"open", &SVGProgram::open},
+        {"print", &SVGProgram::print},
+        {"save", &SVGProgram::save},
+        {"saveas", &SVGProgram::saveas},
+        {"close", &SVGProgram::close},
+        {"help", &SVGProgram::help}
+    };
 
     std::string fileLocation;
     std::fstream currentFile;
@@ -34,12 +42,10 @@ private:
     void help();
 
 public:
-
-    SVGProgram(){}
+    SVGProgram() {}
     ~SVGProgram();
 
     void run(std::string command);
-
 };
 
 #endif
