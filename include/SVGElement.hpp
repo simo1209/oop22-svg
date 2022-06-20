@@ -42,7 +42,6 @@ public:
 
     void print(std::ostream &os);
 
-    friend class SVGProgram;
 };
 
 #endif

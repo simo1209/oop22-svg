@@ -25,6 +25,8 @@ public:
     const std::vector<ASTNode *> &getChildren() const { return children; }
 
     virtual void print(std::ostream &os);
+
+    friend class SVGProgram;
 };
 
 #endif

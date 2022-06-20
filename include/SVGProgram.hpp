@@ -27,7 +27,8 @@ private:
         {"saveas", &SVGProgram::saveas},
         {"close", &SVGProgram::close},
         {"help", &SVGProgram::help},
-        {"create", &SVGProgram::create}};
+        {"create", &SVGProgram::create},
+        {"erase", &SVGProgram::erase}};
 
     void open();
     void print();
@@ -36,6 +37,7 @@ private:
     void close();
     void help();
     void create();
+    void erase();
 
     typedef SVGShape *(SVGProgram::*CreateShapeFunctionPointer)();
     typedef SVGShape *(SVGProgram::*ParseShapeFunctionPointer)(SVGElement *);

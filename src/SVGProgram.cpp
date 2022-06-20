@@ -122,6 +122,36 @@ void SVGProgram::print()
     }
 }
 
+void SVGProgram::erase()
+{
+    std::string eraseIdString = readArgument();
+    unsigned eraseId = std::stoul(eraseIdString);
+
+    auto shapeIter = std::find_if(shapes.begin(), shapes.end(), [eraseId](SVGShape *shape)
+                                  { return shape->getId() == eraseId; });
+
+    if (shapeIter == shapes.end())
+    {
+        throw std::runtime_error("No shape with id: " + eraseIdString);
+    }
+
+    SVGShape *shape = *shapeIter;
+
+    auto svgChildIter = svg->children.begin();
+    for (; svgChildIter != svg->children.end() && *svgChildIter != shape->getElement(); ++svgChildIter)
+    {
+    }
+
+    ASTNode *trash = *svgChildIter;
+    svg->children.erase(svgChildIter);
+    delete trash;
+
+    shapes.erase(shapeIter);
+    delete shape;
+
+    std::cout << "Erased [" << eraseIdString << "]\n";
+}
+
 void SVGProgram::save()
 {
     std::cout << "Saving\n";
