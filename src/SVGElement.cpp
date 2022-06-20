@@ -46,12 +46,6 @@ void SVGElement::printAttributes(std::ostream &os)
 
 void SVGElement::print(std::ostream &os)
 {
-
-    if (&os == &std::cout && supportedTags.find(tag) != supportedTags.end())
-    {
-        os << "[" << programId << "]";
-    }
-
     os << '<' << tag;
 
     printAttributes(os);
@@ -68,8 +62,13 @@ void SVGElement::print(std::ostream &os)
         child->print(os);
     }
 
-    if (!selfClosing)
+    if (selfClosing == false)
     {
         os << "</" << tag << '>';
     }
+}
+
+SVGElement::~SVGElement()
+{
+
 }

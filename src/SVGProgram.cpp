@@ -5,17 +5,24 @@
 
 #include "SVGProgram.hpp"
 #include "SVGElement.hpp"
+#include "SVGRect.hpp"
+#include "SVGText.hpp"
+
+std::string SVGProgram::readArgument()
+{
+    if (std::cin.peek() == '\n')
+    {
+        throw std::runtime_error("Argument missing.");
+    }
+    std::string argument;
+    std::cin >> argument;
+    return argument;
+}
 
 void SVGProgram::open()
 {
 
-    if (std::cin.peek() == '\n')
-    {
-        std::cout << "Argument missing.\n";
-        return;
-    }
-
-    std::cin >> fileLocation;
+    fileLocation = readArgument();
 
     currentFile.open(fileLocation, std::ios::in | std::ios::out);
 
@@ -34,13 +41,12 @@ void SVGProgram::open()
 
 void SVGProgram::parse()
 {
-
     const std::regex tagRegex("<(/)?(\\w+)(.*?)(/)?>"); // <(\/)?(\w+)(.*?)(\/)?>
     auto words_end = std::sregex_iterator();
     auto matches = std::sregex_iterator(programText.begin(), programText.end(), tagRegex);
 
     unsigned lastMatchEnd = 0;
-    root = new ASTNode(programText, 0, programText.length());
+    root = new ASTNode(0, programText.length());
 
     ASTNode *cursor = root;
     std::stack<std::string> tagStack;
@@ -52,7 +58,7 @@ void SVGProgram::parse()
 
         if (lastMatchEnd != match.position())
         {
-            cursor->addChild(new ASTNode(programText.substr(lastMatchEnd, match.position() - lastMatchEnd), lastMatchEnd, match.position()));
+            cursor->addChild(new SVGText(programText.substr(lastMatchEnd, match.position() - lastMatchEnd), lastMatchEnd, match.position()));
             lastMatchEnd = match.position() + match.length();
         }
 
@@ -68,11 +74,20 @@ void SVGProgram::parse()
         }
         else // opening tag
         {
-            ASTNode *nextChild = new SVGElement(match[2], match[3], match[0], match.position(), match.position() + match.length(), match[4].length() > 0);
-            if (supportedTags.find(match[2]) != supportedTags.end())
+            SVGElement *nextChild = new SVGElement(match[2], match[3], match.position(), match.position() + match.length(), match[4].length() > 0);
+
+            if (match[2].compare("svg") == 0)
             {
-                SVGElement *el = static_cast<SVGElement *>(nextChild);
-                el->programId = supportedIdSequence++;
+                if (svg != nullptr)
+                {
+                    throw std::runtime_error("Invalid number of svg tags.");
+                }
+
+                svg = nextChild;
+            }
+
+            if (isTagSupported(match[2]) && svg == cursor) // svg child
+            {
             }
 
             cursor->addChild(nextChild);
@@ -83,6 +98,11 @@ void SVGProgram::parse()
                 cursor = nextChild;
             }
         }
+    }
+
+    if (svg == nullptr)
+    {
+        throw std::runtime_error("Invalid number of svg tags.");
     }
 }
 
@@ -108,14 +128,8 @@ void SVGProgram::save()
 
 void SVGProgram::saveas()
 {
+    fileLocation = readArgument();
     std::cout << "Saving as " << fileLocation << '\n';
-    if (std::cin.peek() == '\n')
-    {
-        std::cout << "Argument missing.\n";
-        return;
-    }
-
-    std::cin >> fileLocation;
 
     currentFile.close();
     currentFile.open(fileLocation, std::ios::out | std::ios::trunc);
@@ -138,22 +152,88 @@ void SVGProgram::saveas()
 void SVGProgram::close()
 {
     std::cout << "Closing\n";
-    exit(0);
+    running = false;
 }
 
 void SVGProgram::help()
 {
     std::cout << "Helping\n";
-    exit(0);
 }
 
-void SVGProgram::run(std::string command)
+SVGShape *SVGProgram::createRect()
 {
-    auto commandFunction = commandTable.find(command);
-    if (commandFunction != commandTable.end())
+    std::string xString, yString, widthString, heightString, color;
+
+    xString = readArgument();
+    yString = readArgument();
+    widthString = readArgument();
+    heightString = readArgument();
+    color = readArgument();
+
+    long x = std::stol(xString);
+    long y = std::stol(yString);
+    unsigned width = std::stoul(widthString);
+    unsigned height = std::stoul(heightString);
+
+    std::string attributesString = " ";
+    attributesString += "x=\"" + xString + "\" ";
+    attributesString += "y=\"" + yString + "\" ";
+    attributesString += "width=\"" + widthString + "\" ";
+    attributesString += "height=\"" + heightString + "\" ";
+    attributesString += "color=\"" + color + "\" ";
+
+    std::string tag = "rect";
+
+    unsigned startPos = svg->getChildren().back()->getEndPosition();
+    unsigned endPos = startPos + 3 + tag.length() + attributesString.length();
+
+    SVGElement *element = new SVGElement(tag, attributesString, startPos, endPos, true);
+    std::cout << "Rect selfclosing : (" << element->isSelfClosing() << ")\n";
+    svg->addChild(element);
+
+    return new SVGRect(x, y, width, height, color, supportedIdSequence++, element);
+}
+
+SVGShape *SVGProgram::createCircle()
+{
+}
+
+void SVGProgram::create()
+{
+    std::string figure = readArgument();
+
+    if (!isTagSupported(figure))
     {
-        CommandFunctionPointer cfp = commandFunction->second;
-        (this->*cfp)();
+        throw std::runtime_error("Figure not supported.");
+    }
+
+    ShapeFunctionPointer shapeFunction = shapeTable.at(figure);
+    SVGShape *newShape = (this->*shapeFunction)();
+    shapes.push_back(newShape);
+    std::cout << "Created " << figure << "(" << newShape->getId() << ")\n";
+}
+
+void SVGProgram::run()
+{
+    while (running)
+    {
+        std::string command;
+
+        try
+        {
+            std::cout << "Enter command: ";
+            std::cin >> command;
+            if (!isCommandSupported(command))
+            {
+                throw std::runtime_error("Command not supported.");
+            }
+            CommandFunctionPointer cfp = commandTable.at(command);
+            (this->*cfp)();
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << '\n';
+        }
     }
 }
 
@@ -161,4 +241,18 @@ SVGProgram::~SVGProgram()
 {
     currentFile.close();
     delete root;
+    for (auto &shape : shapes)
+    {
+        delete shape;
+    }
+}
+
+bool SVGProgram::isTagSupported(std::string tag)
+{
+    return shapeTable.find(tag) != shapeTable.end();
+}
+
+bool SVGProgram::isCommandSupported(std::string command)
+{
+    return commandTable.find(command) != commandTable.end();
 }

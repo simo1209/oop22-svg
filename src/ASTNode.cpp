@@ -2,13 +2,16 @@
 
 ASTNode::~ASTNode()
 {
-    for (auto childIt = children.begin(); childIt != children.end(); ++childIt)
+    for (auto &child : children)
     {
-        delete *childIt;
+        delete child;
     }
 }
 
 void ASTNode::print(std::ostream &os)
 {
-    os << text;
+    for (auto &child : children)
+    {
+        child->print(os);
+    }
 }

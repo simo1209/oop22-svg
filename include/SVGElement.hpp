@@ -15,16 +15,19 @@ private:
     std::string tag;
     std::vector<SVGAttribute> attributes;
     unsigned attributesTailingWhitespaces;
-    // std::map<std::string, std::string> attributes;
+
+    std::vector<ASTNode *> children;
 
     void parseAttributes(std::string attributesString);
     void printAttributes(std::ostream &os);
 
 public:
-    SVGElement(std::string _tag, std::string _attributesString, std::string _text, unsigned _startPos, unsigned _endPos, bool _selfClosing = true) : tag(_tag), ASTNode(_text, _startPos, _endPos), selfClosing(_selfClosing)
+
+    SVGElement(std::string _tag, std::string _attributesString, unsigned _startPos, unsigned _endPos, bool _selfClosing = true) : tag(_tag), ASTNode(_startPos, _endPos), selfClosing(_selfClosing)
     {
         parseAttributes(_attributesString);
     }
+    ~SVGElement();
 
     bool isSelfClosing() const { return selfClosing; }
     std::string getTag() const { return tag; }

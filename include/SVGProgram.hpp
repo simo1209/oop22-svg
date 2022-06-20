@@ -3,6 +3,7 @@
 #include <map>
 
 #include "ASTNode.hpp"
+#include "SVGShape.hpp"
 
 #ifndef __SVGPROGRAM
 #define __SVGPROGRAM
@@ -14,6 +15,7 @@ const std::map<std::string, bool> supportedTags = {
 class SVGProgram
 {
 private:
+    bool running = true;
     unsigned supportedIdSequence = 1;
 
     typedef void (SVGProgram::*CommandFunctionPointer)();
@@ -23,16 +25,8 @@ private:
         {"save", &SVGProgram::save},
         {"saveas", &SVGProgram::saveas},
         {"close", &SVGProgram::close},
-        {"help", &SVGProgram::help}
-    };
-
-    std::string fileLocation;
-    std::fstream currentFile;
-
-    std::string programText;
-    ASTNode *root;
-
-    void parse();
+        {"help", &SVGProgram::help},
+        {"create", &SVGProgram::create}};
 
     void open();
     void print();
@@ -40,12 +34,37 @@ private:
     void saveas();
     void close();
     void help();
+    void create();
+
+    typedef SVGShape *(SVGProgram::*ShapeFunctionPointer)();
+    const std::map<std::string, ShapeFunctionPointer> shapeTable = {
+        {"rect", &SVGProgram::createRect},
+        {"circle", &SVGProgram::createCircle}};
+
+    SVGShape *createRect();
+    SVGShape *createCircle();
+
+    std::string fileLocation;
+    std::fstream currentFile;
+
+    std::string programText;
+
+    ASTNode *root;
+    SVGElement *svg = nullptr;
+
+    std::vector<SVGShape *> shapes;
+
+    void parse();
+    bool isCommandSupported(std::string command);
+    bool isTagSupported(std::string tag);
+
+    std::string readArgument();
 
 public:
     SVGProgram() {}
     ~SVGProgram();
 
-    void run(std::string command);
+    void run();
 };
 
 #endif
