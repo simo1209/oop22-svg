@@ -8,19 +8,24 @@
 
 void SVGProgram::open()
 {
-    std::string fileLocation;
+
+    if (std::cin.peek() == '\n')
+    {
+        std::cout << "Argument missing.\n";
+        return;
+    }
+
     std::cin >> fileLocation;
 
-    std::fstream file;
-    file.open(fileLocation, std::ios::in);
+    currentFile.open(fileLocation, std::ios::in | std::ios::out);
 
-    if (!file.is_open())
+    if (!currentFile.is_open())
     {
         throw std::runtime_error("Can't open file.");
     }
 
     std::cout << "Opened file.\n";
-    std::string str(std::istreambuf_iterator<char>{file}, {});
+    std::string str(std::istreambuf_iterator<char>{currentFile}, {});
 
     programText = str;
 
@@ -64,6 +69,12 @@ void SVGProgram::parse()
         else // opening tag
         {
             ASTNode *nextChild = new SVGElement(match[2], match[3], match[0], match.position(), match.position() + match.length(), match[4].length() > 0);
+            if (supportedTags.find(match[2]) != supportedTags.end())
+            {
+                SVGElement *el = static_cast<SVGElement *>(nextChild);
+                el->programId = supportedIdSequence++;
+            }
+
             cursor->addChild(nextChild);
             if (match[4] != '/') // move cursor to new child and push tag to stack
             {
@@ -77,6 +88,7 @@ void SVGProgram::parse()
 
 void SVGProgram::print()
 {
+    std::cout << "Printing\n";
     for (auto &child : root->getChildren())
     {
         child->print(std::cout);
@@ -87,11 +99,40 @@ void SVGProgram::print()
 void SVGProgram::save()
 {
     std::cout << "Saving\n";
+    for (auto &child : root->getChildren())
+    {
+        child->print(std::cerr);
+    }
+    std::cout << '\n';
 }
 
 void SVGProgram::saveas()
 {
-    std::cout << "Saving as\n";
+    std::cout << "Saving as " << fileLocation << '\n';
+    if (std::cin.peek() == '\n')
+    {
+        std::cout << "Argument missing.\n";
+        return;
+    }
+
+    std::cin >> fileLocation;
+    
+    currentFile.close();
+    currentFile.open(fileLocation, std::ios::out | std::ios::trunc);
+
+    if (!currentFile.is_open())
+    {
+        throw std::runtime_error("Can't open file.");
+    }
+
+    for (auto &child : root->getChildren())
+    {
+        child->print(currentFile);
+    }
+
+    currentFile.flush();
+
+    std::cout << "Successfully saved file " << fileLocation << '\n';
 }
 
 void SVGProgram::close()
@@ -106,29 +147,30 @@ void SVGProgram::run(std::string command)
     {
         open();
     }
-
-    if (command.compare("print") == 0)
+    else if (command.compare("print") == 0)
     {
         print();
     }
-
-    if (command.compare("save") == 0)
+    else if (command.compare("save") == 0)
     {
         save();
     }
-
-    if (command.compare("saveas") == 0)
+    else if (command.compare("saveas") == 0)
     {
         saveas();
     }
-
-    if (command.compare("close") == 0)
+    else if (command.compare("close") == 0)
     {
         close();
+    }
+    else
+    {
+        std::cout << "Unrecognized command.\n";
     }
 }
 
 SVGProgram::~SVGProgram()
 {
+    currentFile.close();
     delete root;
 }

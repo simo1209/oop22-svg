@@ -9,6 +9,7 @@
 class SVGElement : public ASTNode
 {
 private:
+    unsigned programId;
 
     bool selfClosing;
     std::string tag;
@@ -17,6 +18,7 @@ private:
     // std::map<std::string, std::string> attributes;
 
     void parseAttributes(std::string attributesString);
+    void printAttributes(std::ostream &os);
 
 public:
     SVGElement(std::string _tag, std::string _attributesString, std::string _text, unsigned _startPos, unsigned _endPos, bool _selfClosing = true) : tag(_tag), ASTNode(_text, _startPos, _endPos), selfClosing(_selfClosing)
@@ -30,7 +32,7 @@ public:
 
     void print(std::ostream &os);
 
+    friend class SVGProgram;
 };
-
 
 #endif

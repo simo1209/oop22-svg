@@ -1,7 +1,9 @@
 #include <regex>
 #include <ostream>
+#include <iostream>
 
 #include "SVGElement.hpp"
+#include "SVGProgram.hpp"
 
 void SVGElement::parseAttributes(std::string attributesString)
 {
@@ -22,10 +24,8 @@ void SVGElement::parseAttributes(std::string attributesString)
     attributesTailingWhitespaces = attributesString.length() - lastEndPosition;
 }
 
-void SVGElement::print(std::ostream &os)
+void SVGElement::printAttributes(std::ostream &os)
 {
-    os << '<' << tag;
-
     unsigned lastEndPosition = 0;
     for (auto &attribute : attributes)
     {
@@ -42,6 +42,19 @@ void SVGElement::print(std::ostream &os)
     {
         os << ' ';
     }
+}
+
+void SVGElement::print(std::ostream &os)
+{
+
+    if (&os == &std::cout && supportedTags.find(tag) != supportedTags.end())
+    {
+        os << "[" << programId << "]";
+    }
+
+    os << '<' << tag;
+
+    printAttributes(os);
 
     if (selfClosing)
     {
