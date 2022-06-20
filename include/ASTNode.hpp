@@ -13,7 +13,9 @@ private:
     std::vector<ASTNode *> children;
 
 public:
+    ASTNode() = default;
     ASTNode(unsigned _startPosition, unsigned _endPosition) : startPosition(_startPosition), endPosition(_endPosition) {}
+    ASTNode(ASTNode const& other);
     virtual ~ASTNode();
 
     void addChild(ASTNode *child) { children.push_back(child); };

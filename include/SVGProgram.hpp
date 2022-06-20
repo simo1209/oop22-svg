@@ -1,6 +1,7 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <tuple>
 
 #include "ASTNode.hpp"
 #include "SVGShape.hpp"
@@ -36,13 +37,18 @@ private:
     void help();
     void create();
 
-    typedef SVGShape *(SVGProgram::*ShapeFunctionPointer)();
-    const std::map<std::string, ShapeFunctionPointer> shapeTable = {
-        {"rect", &SVGProgram::createRect},
-        {"circle", &SVGProgram::createCircle}};
+    typedef SVGShape *(SVGProgram::*CreateShapeFunctionPointer)();
+    typedef SVGShape *(SVGProgram::*ParseShapeFunctionPointer)(SVGElement *);
+    const std::map<std::string, std::tuple<CreateShapeFunctionPointer, ParseShapeFunctionPointer>> shapeTable = {
+        {"rect", std::make_tuple(&SVGProgram::createRect, &SVGProgram::parseRect)},
+        {"circle", std::make_tuple(&SVGProgram::createCircle, &SVGProgram::parseCircle)}};
 
     SVGShape *createRect();
     SVGShape *createCircle();
+    SVGShape *parseRect(SVGElement *element);
+    SVGShape *parseCircle(SVGElement *element);
+
+    SVGAttribute *findElementAttribute(std::string attributeName, SVGElement *element);
 
     std::string fileLocation;
     std::fstream currentFile;
@@ -62,7 +68,12 @@ private:
 
 public:
     SVGProgram() {}
+    SVGProgram(SVGProgram const &other);
+    SVGProgram &operator=(SVGProgram const &other);
     ~SVGProgram();
+
+    std::string getProgramText() const { return programText; }
+    void setProgramText(std::string _programText) { programText = _programText; }
 
     void run();
 };

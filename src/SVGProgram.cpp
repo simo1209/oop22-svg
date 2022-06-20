@@ -2,10 +2,12 @@
 #include <stack>
 #include <iostream>
 #include <fstream>
+#include <tuple>
 
 #include "SVGProgram.hpp"
 #include "SVGElement.hpp"
 #include "SVGRect.hpp"
+#include "SVGCircle.hpp"
 #include "SVGText.hpp"
 
 std::string SVGProgram::readArgument()
@@ -24,7 +26,7 @@ void SVGProgram::open()
 
     fileLocation = readArgument();
 
-    currentFile.open(fileLocation, std::ios::in | std::ios::out);
+    currentFile.open(fileLocation, std::ios::in);
 
     if (!currentFile.is_open())
     {
@@ -33,6 +35,7 @@ void SVGProgram::open()
 
     std::cout << "Opened file.\n";
     std::string str(std::istreambuf_iterator<char>{currentFile}, {});
+    currentFile.close();
 
     programText = str;
 
@@ -88,6 +91,9 @@ void SVGProgram::parse()
 
             if (isTagSupported(match[2]) && svg == cursor) // svg child
             {
+                ParseShapeFunctionPointer shapeFunction = std::get<1>(shapeTable.at(match[2]));
+                SVGShape *newShape = (this->*shapeFunction)(nextChild);
+                shapes.push_back(newShape);
             }
 
             cursor->addChild(nextChild);
@@ -109,21 +115,24 @@ void SVGProgram::parse()
 void SVGProgram::print()
 {
     std::cout << "Printing\n";
-    for (auto &child : root->getChildren())
+    for (auto &shape : shapes)
     {
-        child->print(std::cout);
+        shape->print(std::cout);
+        std::cout << '\n';
     }
-    std::cout << '\n';
 }
 
 void SVGProgram::save()
 {
     std::cout << "Saving\n";
+    currentFile.open(fileLocation, std::ios::out | std::ios::trunc);
     for (auto &child : root->getChildren())
     {
-        child->print(std::cerr);
+        child->print(currentFile);
     }
-    std::cout << '\n';
+    currentFile.flush();
+    currentFile.close();
+    std::cout << "Successfully saved file " << fileLocation << '\n';
 }
 
 void SVGProgram::saveas()
@@ -131,7 +140,6 @@ void SVGProgram::saveas()
     fileLocation = readArgument();
     std::cout << "Saving as " << fileLocation << '\n';
 
-    currentFile.close();
     currentFile.open(fileLocation, std::ios::out | std::ios::trunc);
 
     if (!currentFile.is_open())
@@ -145,6 +153,7 @@ void SVGProgram::saveas()
     }
 
     currentFile.flush();
+    currentFile.close();
 
     std::cout << "Successfully saved file " << fileLocation << '\n';
 }
@@ -160,42 +169,82 @@ void SVGProgram::help()
     std::cout << "Helping\n";
 }
 
+SVGAttribute *SVGProgram::findElementAttribute(std::string attributeName, SVGElement *element)
+{
+    auto attributeIter = std::find_if(element->getAttributes().begin(), element->getAttributes().end(), [attributeName](SVGAttribute *attributePtr)
+                                      { return attributeName.compare(attributePtr->getName()) == 0; });
+
+    if (attributeIter == element->getAttributes().end())
+    {
+        throw std::runtime_error("Shape missing required attribute: " + attributeName);
+    }
+    return *attributeIter;
+}
+
 SVGShape *SVGProgram::createRect()
 {
-    std::string xString, yString, widthString, heightString, color;
+    std::string xString, yString, widthString, heightString, fill;
 
     xString = readArgument();
     yString = readArgument();
     widthString = readArgument();
     heightString = readArgument();
-    color = readArgument();
+    fill = readArgument();
 
-    long x = std::stol(xString);
-    long y = std::stol(yString);
-    unsigned width = std::stoul(widthString);
-    unsigned height = std::stoul(heightString);
-
-    std::string attributesString = " ";
-    attributesString += "x=\"" + xString + "\" ";
-    attributesString += "y=\"" + yString + "\" ";
-    attributesString += "width=\"" + widthString + "\" ";
-    attributesString += "height=\"" + heightString + "\" ";
-    attributesString += "color=\"" + color + "\" ";
-
-    std::string tag = "rect";
+    SVGRect *rect = new SVGRect(xString, yString, widthString, heightString, fill, supportedIdSequence++);
 
     unsigned startPos = svg->getChildren().back()->getEndPosition();
-    unsigned endPos = startPos + 3 + tag.length() + attributesString.length();
+    svg->addChild(rect->generateElement(startPos));
 
-    SVGElement *element = new SVGElement(tag, attributesString, startPos, endPos, true);
-    std::cout << "Rect selfclosing : (" << element->isSelfClosing() << ")\n";
-    svg->addChild(element);
-
-    return new SVGRect(x, y, width, height, color, supportedIdSequence++, element);
+    return rect;
 }
 
 SVGShape *SVGProgram::createCircle()
 {
+    std::string xString, yString, radiusString, fill;
+
+    xString = readArgument();
+    yString = readArgument();
+    radiusString = readArgument();
+    fill = readArgument();
+
+    SVGCircle *circle = new SVGCircle(xString, yString, radiusString, fill, supportedIdSequence++);
+
+    unsigned startPos = svg->getChildren().back()->getEndPosition();
+    svg->addChild(circle->generateElement(startPos));
+
+    return circle;
+}
+
+SVGShape *SVGProgram::parseRect(SVGElement *element)
+{
+    std::string xString, yString, widthString, heightString, fill;
+
+    xString = findElementAttribute("x", element)->getValue();
+    yString = findElementAttribute("y", element)->getValue();
+    widthString = findElementAttribute("width", element)->getValue();
+    heightString = findElementAttribute("height", element)->getValue();
+    fill = findElementAttribute("fill", element)->getValue();
+
+    SVGRect *rect = new SVGRect(xString, yString, widthString, heightString, fill, supportedIdSequence++);
+    rect->setElement(element);
+
+    return rect;
+}
+
+SVGShape *SVGProgram::parseCircle(SVGElement *element)
+{
+    std::string xString, yString, radiusString, fill;
+
+    xString = findElementAttribute("cx", element)->getValue();
+    yString = findElementAttribute("cy", element)->getValue();
+    radiusString = findElementAttribute("r", element)->getValue();
+    fill = findElementAttribute("fill", element)->getValue();
+
+    SVGCircle *circle = new SVGCircle(xString, yString, radiusString, fill, supportedIdSequence++);
+    circle->setElement(element);
+
+    return circle;
 }
 
 void SVGProgram::create()
@@ -207,7 +256,7 @@ void SVGProgram::create()
         throw std::runtime_error("Figure not supported.");
     }
 
-    ShapeFunctionPointer shapeFunction = shapeTable.at(figure);
+    CreateShapeFunctionPointer shapeFunction = std::get<0>(shapeTable.at(figure));
     SVGShape *newShape = (this->*shapeFunction)();
     shapes.push_back(newShape);
     std::cout << "Created " << figure << "(" << newShape->getId() << ")\n";
@@ -235,6 +284,22 @@ void SVGProgram::run()
             std::cerr << e.what() << '\n';
         }
     }
+}
+
+SVGProgram::SVGProgram(SVGProgram const &other)
+{
+    setProgramText(other.getProgramText());
+    parse();
+}
+
+SVGProgram &SVGProgram::operator=(SVGProgram const &other)
+{
+    if (this != &other)
+    {
+        setProgramText(other.getProgramText());
+        parse();
+    }
+    return *this;
 }
 
 SVGProgram::~SVGProgram()

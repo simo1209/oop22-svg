@@ -20,9 +20,13 @@ public:
     std::string getName() const { return name; }
     std::string getValue() const { return value; }
     unsigned getStartPosition() const { return startPosition; }
-    unsigned getEndPosition() const { return endPosition; }    
-    
+    unsigned getEndPosition() const { return endPosition; }
+
+    void setName(std::string _name) { this->name = _name; }
     void setValue(std::string _val) { this->value = _val; }
+    void setValuePresent(bool _hasValue) { this->value = _hasValue; }
+    void setStartPosition(unsigned _startPos) { this->startPosition = _startPos; }
+    void setEndPosition(unsigned _endPos) { this->endPosition = _endPos; }
 };
 
 std::ostream &operator<<(std::ostream &os, SVGAttribute const &attribute);
